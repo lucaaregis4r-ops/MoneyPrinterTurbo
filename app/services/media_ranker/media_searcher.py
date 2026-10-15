@@ -7,7 +7,7 @@ ScenePlan -> Queries -> CandidateBuilder -> Deduplicator -> Technical Filter -> 
 from __future__ import annotations
 import json
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from app.services import material
 from app.services.director.schemas import Scene, ScenePlan
@@ -18,6 +18,9 @@ from .semantic_ranker import SemanticRanker
 from .smart_library import SmartLibrary
 from .technical_filter import rank_and_filter_candidates
 
+if TYPE_CHECKING:
+    from app.services.graphics.graphics_engine import GraphicsEngine
+
 
 class MediaSearcher:
     def __init__(
@@ -25,6 +28,7 @@ class MediaSearcher:
         candidate_builder: Optional[CandidateBuilder] = None,
         smart_library: Optional[SmartLibrary] = None,
         semantic_ranker: Optional[SemanticRanker] = None,
+        graphics_engine: Optional[Any] = None,
         media_cache_dir: str | Path = "storage/media_cache",
     ):
         self.media_cache_dir = Path(media_cache_dir).resolve()
@@ -35,6 +39,11 @@ class MediaSearcher:
             library_dir=self.media_cache_dir
         )
         self.semantic_ranker = semantic_ranker or SemanticRanker()
+        if graphics_engine is None:
+            from app.services.graphics.graphics_engine import GraphicsEngine
+            self.graphics_engine = GraphicsEngine(cache_dir=self.media_cache_dir / "graphics")
+        else:
+            self.graphics_engine = graphics_engine
         self.deduplicator = MediaDeduplicator()
 
     def search_for_scene(
@@ -82,6 +91,18 @@ class MediaSearcher:
             candidates=tech_filtered,
             top_k=candidates_per_scene,
         )
+
+        # 6. If scene is graphic/formula/number/quote, prepend programmatic card as #1 candidate
+        if self.graphics_engine.is_graphic_scene(scene):
+            try:
+                card_cand = self.graphics_engine.create_card_candidate(
+                    scene=scene,
+                    duration=target_duration,
+                )
+                sem_ranked.insert(0, card_cand)
+                sem_ranked = sem_ranked[:candidates_per_scene]
+            except Exception:
+                pass
 
         return sem_ranked
 
