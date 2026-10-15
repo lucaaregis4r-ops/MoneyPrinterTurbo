@@ -1,20 +1,163 @@
 <div align="center">
 
-# MoneyPrinterTurbo 💸
+# 🎬 Fábrica de Shorts 1.0 🚀
+### Conteúdo Humano, Produção Automatizada
 
-### 一站式 AI 短视频生成工具
+**Pipeline modular de produção de vídeos verticais (9:16) em lote a partir de roteiros humanos.**
 
-只需提供视频<b>主题</b>或<b>关键词</b>，即可自动生成视频脚本、匹配素材、生成字幕和背景音乐，并合成高清短视频。
+[![Version](https://img.shields.io/badge/versão-1.0.0-emerald.svg)](https://github.com/lucaaregis4r-ops/MoneyPrinterTurbo)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
+[![FFmpeg](https://img.shields.io/badge/ffmpeg-7.0.2%20static-red.svg)](https://ffmpeg.org/)
+[![Licença](https://img.shields.io/badge/licença-MIT-green.svg)](LICENSE)
 
-[![Version](https://img.shields.io/github/v/release/harry0703/MoneyPrinterTurbo?color=blue&label=version)](https://github.com/harry0703/MoneyPrinterTurbo/releases)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/harry0703/MoneyPrinterTurbo/releases/latest)
-[![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Downloads](https://img.shields.io/github/downloads/harry0703/MoneyPrinterTurbo/total)](https://github.com/harry0703/MoneyPrinterTurbo/releases/latest)
+*Baseado no projeto open-source MoneyPrinterTurbo, completamente refatorado para automação profissional de canais no YouTube Shorts, TikTok e Instagram Reels.*
 
-<a href="https://trendshift.io/repositories/8731" target="_blank"><img src="https://trendshift.io/api/badge/repositories/8731" alt="harry0703%2FMoneyPrinterTurbo | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
-<a href="https://www.star-history.com/harry0703/moneyprinterturbo"><img src="https://api.star-history.com/badge?repo=harry0703/MoneyPrinterTurbo" alt="Star History Rank" style="height: 55px;" height="55"/></a>
+</div>
 
-简体中文 | [English](README-en.md) | [日本語](README-ja.md) | [版本发布](https://github.com/harry0703/MoneyPrinterTurbo/releases) | [问题反馈](https://github.com/harry0703/MoneyPrinterTurbo/issues)
+---
+
+## 💡 A Filosofia do Projeto
+
+> **"O humano aprova a palavra. A máquina cuida do resto."**
+
+Ao contrário de geradores genéricos que criam roteiros alucinados por IA, a **Fábrica de Shorts** coloca o criador no controle do texto:
+1. **Fidelidade Literal Inviolável (Regra #1):** O campo `narration` de cada cena é 100% idêntico ao trecho aprovado pelo humano. Nenhuma palavra é inventada ou reescrita pela IA.
+2. **Direção Visual Inteligente:** O LLM atua apenas como **Diretor de Cena**, segmentando o roteiro em blocos visuais dinâmicos de 2 a 5 segundos e definindo termos de busca semântica.
+3. **Pronúncia Fonética Automática:** Termos científicos e siglas (ex: $F = m \cdot a$, $E = mc^2$, NBA) são falados perfeitamente pelo TTS em português sem alterar a legenda exibida na tela.
+4. **Motor Gráfico para Cenas Abstratas:** Cenas de fórmulas físicas, números impactantes ou citações recebem cartões visuais verticais gerados programaticamente com tipografia moderna e animação suave de zoom.
+5. **Re-renderização Parcial em Cache:** Se você quiser trocar a filmagem de apenas uma cena no estúdio, apenas aquela cena é reprocessada em segundos; todo o restante do vídeo é reutilizado do cache.
+6. **Produção em Lote Assíncrona:** Ingestão de dezenas de roteiros de uma só vez, com fila em segundo plano (SQLite WAL) e exportação organizada por canal e data.
+
+---
+
+## 🏛️ Arquitetura dos 9 Módulos (Sprints 1 a 9)
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        ROTEIRO HUMANO APROVADO                         │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ 1. SCENE DIRECTOR (app/services/director/)                             │
+│    - Versionamento imutável (script_v001, v002)                        │
+│    - Parser de diretivas inline ([visual:], [formula:], [pause:])      │
+│    - Segmentação em cenas com Gemini 3.5 Flash / Fallback Local        │
+└───────────────────┬────────────────────────────────┬───────────────────┘
+                    │                                │
+                    ▼                                ▼
+┌──────────────────────────────────────┐  ┌──────────────────────────────┐
+│ 2. VOICE STUDIO (app/services/voice) │  │ 3. GRAPHICS ENGINE           │
+│    - Síntese Edge TTS natural pt-BR  │  │    (app/services/graphics/)  │
+│    - Dicionário fonético persistente │  │    - Fórmulas físicas        │
+│    - Timestamps exatos por palavra   │  │    - Números & estatísticas  │
+└───────────────────┬──────────────────┘  │    - Citações notáveis       │
+                    │                     │    - Títulos & conceitos     │
+                    │                     └──────────────┬───────────────┘
+                    ▼                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ 4. MEDIA SEARCHER & SMART LIBRARY (app/services/media_ranker/)         │
+│    - Busca Pexels / Pixabay + Acervo Local Inteligente                 │
+│    - Filtro técnico de resolução 1080x1920 (9:16)                      │
+│    - Rankeador semântico multimodal (Top 3 candidatos por cena)        │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ 5. REVIEW STUDIO (webui/pages/1_🎬_Scene_Review.py)                   │
+│    - Player vertical 9:16 com navegação cena a cena                    │
+│    - Troca de filmagem em 1 clique ou upload de arquivo próprio        │
+│    - Re-renderização parcial com VideoProject (reuso total de cache)   │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ 6. BATCH PRODUCTION & RENDER QUEUE (app/services/batch/)               │
+│    - Ingestão em lote de múltiplos roteiros (Markdown / pastas)        │
+│    - Fila persistente em SQLite (WAL mode) com controle de prioridade  │
+│    - Worker assíncrono em segundo plano sem travar a interface         │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ 7. EXPORT STUDIO (app/services/publisher/)                             │
+│    - Organização por canal: storage/exports/{channel}/{date}_{title}/  │
+│    - Títulos A/B otimizados para clique, capítulos e hashtags          │
+│    - Pacote final ZIP para YouTube Shorts, TikTok e Instagram Reels    │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🚀 Instalação Rápida
+
+O projeto utiliza o gerenciador de pacotes ultrarrápido **`uv`** com dependências travadas e FFmpeg estático incluído.
+
+### 1. Clonar o Repositório
+```bash
+git clone https://github.com/lucaaregis4r-ops/MoneyPrinterTurbo.git
+cd MoneyPrinterTurbo
+```
+
+### 2. Sincronizar Ambiente Virtual
+```bash
+uv sync --frozen
+```
+
+### 3. Executar a Interface Web (Streamlit)
+```bash
+.venv/bin/streamlit run webui/Main.py
+```
+
+A interface abrirá automaticamente no seu navegador em `http://localhost:8501`.
+
+---
+
+## 🖥️ Páginas da Interface Web
+
+A interface Streamlit conta com páginas dedicadas para cada etapa da produção:
+
+1. **`Main.py` (Painel Principal):**
+   - Criação rápida de vídeo avulso com prévia de roteiro e configurações de canal.
+2. **`1_🎬_Scene_Review.py` (Estúdio de Revisão):**
+   - Player vertical 9:16 integrado.
+   - Inspeção de cada cena com alternativas de vídeo ranqueadas.
+   - Troca de mídia com re-renderização parcial em tempo real.
+3. **`2_🎙️_Voice_Studio.py` (Estúdio de Voz):**
+   - Audição frase a frase de vozes naturais em português (`pt-BR-AntonioNeural`, `Francisca`, `Thalita`).
+   - CRUD do dicionário fonético de pronúncia (`storage/voices/dictionary.json`).
+4. **`3_📦_Batch_Production.py` (Produção em Lote):**
+   - Ingestão em massa colando vários roteiros separados por `---` ou fazendo upload de arquivos `.md`/`.txt`.
+   - Monitoramento em tempo real da fila de produção com barras de progresso por etapa.
+   - Navegador do arquivo de exportações com download de MP4 e descrições prontas para publicação.
+
+---
+
+## 🧪 Suíte de Testes Automatizados
+
+Cada sprint possui uma suíte de testes unitários e de integração de ponta a ponta:
+
+```bash
+# Executar todos os testes da Fábrica de Shorts
+.venv/bin/pytest test/services/
+
+# Testes específicos por módulo
+.venv/bin/pytest test/services/test_sprint1_e2e.py       # Render baseline & FFmpeg
+.venv/bin/pytest test/services/test_sprint2_director.py  # Scene Director & Roteiros
+.venv/bin/pytest test/services/test_sprint3_searcher.py  # Busca de mídias & Factory
+.venv/bin/pytest test/services/test_sprint4_review.py    # Review Studio & Re-render parcial
+.venv/bin/pytest test/services/test_sprint5_ranker.py    # Rankeador semântico
+.venv/bin/pytest test/services/test_sprint6_voice.py     # Voice Studio & Dicionário
+.venv/bin/pytest test/services/test_sprint7_graphics.py  # Motor gráfico & fórmulas
+.venv/bin/pytest test/services/test_sprint8_batch.py     # Fila em lote & Worker
+.venv/bin/pytest test/services/test_sprint9_final.py     # Export Studio & ZIP
+```
+
+---
+
+<div align="center">
+
+## Referências Originais do Upstream (MoneyPrinterTurbo)
 
 </div>
 
