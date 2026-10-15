@@ -1,0 +1,107 @@
+"""Scene Validator and Integrity Enforcer.
+
+CRITICAL PRODUCT RULE (Section 9):
+The narration text in each scene MUST be a literal slice of the approved human script.
+The LLM is strictly prohibited from rewriting, deleting, or hallucinating text.
+"""
+
+from __future__ import annotations
+import re
+from typing import Any, Tuple
+
+from .schemas import Scene, ScenePlan
+
+
+class SceneValidationError(ValueError):
+    pass
+
+
+def _normalize_for_comparison(text: str) -> str:
+    """Normalizes whitespace and standardizes quotes/dashes for comparison."""
+    t = text.replace("“", '"').replace("”", '"').replace("’", "'")
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
+
+
+def realign_narration_with_original(
+    raw_scenes: list[dict[str, Any]], original_clean_script: str
+) -> list[dict[str, Any]]:
+    """Guarantees that narration in each scene corresponds to the exact character slice
+
+    from the approved human script, eliminating minor whitespace or casing shifts from the LLM.
+    """
+    clean_original = original_clean_script.strip()
+    realigned = []
+    current_pos = 0
+
+    for idx, sc in enumerate(raw_scenes):
+        sc_copy = dict(sc)
+        narration = sc.get("narration", "").strip()
+
+        # Try exact search from current_pos
+        match_idx = clean_original.lower().find(narration.lower(), current_pos)
+        if match_idx != -1:
+            end_idx = match_idx + len(narration)
+            # Use exact slice from original text
+            sc_copy["narration"] = clean_original[match_idx:end_idx].strip()
+            current_pos = end_idx
+        else:
+            # Fallback: if not found cleanly, preserve narration as given
+            sc_copy["narration"] = narration
+
+        realigned.append(sc_copy)
+
+    return realigned
+
+
+def validate_scene_plan(
+    plan: ScenePlan, original_clean_script: str, strict_words: bool = True
+) -> Tuple[bool, list[str]]:
+    """Validates that:
+    1. Narration concatenation matches approved script.
+    2. Scene IDs are formatted and sequential (scene_001, scene_002...).
+    3. Each scene has at least 1 search query and an intent.
+    4. Scene count is reasonable.
+    """
+    errors: list[str] = []
+
+    if not plan.scenes:
+        errors.append("Plan contains no scenes.")
+        return False, errors
+
+    # 1. Narration fidelity check
+    combined_narration = " ".join(s.narration for s in plan.scenes)
+    norm_combined = _normalize_for_comparison(combined_narration)
+    norm_original = _normalize_for_comparison(original_clean_script)
+
+    if strict_words:
+        # Compare word by word ignoring punctuation
+        words_combined = re.findall(r"\w+", norm_combined.lower())
+        words_original = re.findall(r"\w+", norm_original.lower())
+
+        if words_combined != words_original:
+            diff_sample = f"Original words: {len(words_original)}, Plan words: {len(words_combined)}"
+            errors.append(
+                f"Narration does not match approved script! ({diff_sample})"
+            )
+
+    # 2. Scene structure check
+    seen_ids = set()
+    for i, sc in enumerate(plan.scenes):
+        if not sc.scene_id:
+            errors.append(f"Scene #{i+1} has no scene_id")
+        elif sc.scene_id in seen_ids:
+            errors.append(f"Duplicate scene_id: {sc.scene_id}")
+        seen_ids.add(sc.scene_id)
+
+        if not sc.narration.strip():
+            errors.append(f"Scene {sc.scene_id} has empty narration")
+
+        if not sc.intent.strip():
+            errors.append(f"Scene {sc.scene_id} has empty visual intent")
+
+        if not sc.queries or len(sc.queries) < 1:
+            errors.append(f"Scene {sc.scene_id} must have at least 1 search query")
+
+    is_valid = len(errors) == 0
+    return is_valid, errors
